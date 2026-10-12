@@ -22,6 +22,7 @@ Deadline: domingo 11 de octubre 11:55 pm
 [https\://github.com/KarlaEmi/proyecto.git](https://github.com/KarlaEmi/proyecto.git) 
 
 **III. Commit hash del último commit considerado para la entrega (OBLIGATORIO):**
+2cbfae6c26e76fa6ad98e60b1e7dc0b16c59ee06
 
 **IV. Checklist de avance (✓/✗)**
 
