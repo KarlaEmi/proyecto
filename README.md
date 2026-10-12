@@ -1,4 +1,4 @@
-#README
+# README
 
 La hipertensión representa uno de los mayores peligros para la salud pública global. Entre 1990 y 2019, la cantidad de personas diagnosticadas o medicadas por esta condición —definida por niveles iguales o superiores a 140 mmHg de presión sistólica o 90 mmHg de diastólica— se duplicó, pasando de 650 millones a 1300 millones. Su impacto es crítico, ya que incrementa directamente el riesgo de sufrir accidentes cerebrovasculares, infartos, insuficiencia cardíaca y lesiones renales.
 
