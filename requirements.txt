@@ -1,0 +1,20 @@
+# Dependencias del proyecto (Python >= 3.10)
+# Instalación: pip install -r requirements.txt
+
+# Datos y gráficos
+pandas>=2.0
+numpy>=1.24
+scipy>=1.10
+matplotlib>=3.7
+seaborn>=0.12
+
+# Modelos
+scikit-learn>=1.3
+torch>=2.0          # GRU y MLP (notebooks/02_modelos.ipynb, src/models.py); versión CPU: https://pytorch.org/get-started/locally/
+
+# Cuadernos
+jupyter>=1.0
+
+# Opcionales: 02_modelos.ipynb funciona sin ellas
+lightgbm>=4.0       # modelo LightGBM; si falta, se omite
+optuna>=3.0         # búsqueda de hiperparámetros; si falta, se usa búsqueda aleatoria

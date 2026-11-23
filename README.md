@@ -127,6 +127,7 @@ El diccionario de variables está en `data/raw/Metadatos - Prestaciones de salud
 proyecto/
 ├── README.md                    ← este archivo
 ├── ENTREGABLE_PARCIAL.md        ← informe del avance parcial (cohorte, variables, baseline)
+├── requirements.txt             ← dependencias de Python
 ├── .gitattributes               ← reglas de Git LFS
 ├── data/
 │   ├── raw/                     ← datos originales del SIS (comprimidos, con Git LFS)
@@ -189,12 +190,15 @@ La versión más reciente del preprocesamiento agrega variables, como los antece
 |---|---|
 | `pandas` | Lectura por bloques, limpieza y agregación por paciente |
 | `numpy` | Cálculos numéricos y validación de rangos (en `float64`) |
+| `scipy` | Correlación de Spearman entre modelos y búsqueda de umbrales |
 | `matplotlib`, `seaborn` | Gráficos del EDA, del preprocesamiento y de los modelos |
-| `scikit-learn` | `train_test_split`, `StratifiedKFold`, `Pipeline`, `SimpleImputer`, `StandardScaler`, KNN, árbol, regresión logística y métricas |
+| `scikit-learn` | `train_test_split`, `StratifiedKFold`, `Pipeline`, `SimpleImputer`, `StandardScaler`, KNN, árbol, regresión logística, Random Forest, HistGradientBoosting y métricas |
+| `torch` | Redes neuronales (GRU y MLP) |
 | `jupyter` | Ejecutar los cuadernos |
-| `imbalanced-learn` *(opcional)* | Solo para el experimento comparativo con SMOTE/SMOTENC |
+| `lightgbm` *(opcional)* | Modelo LightGBM; si no está instalado, se omite |
+| `optuna` *(opcional)* | Búsqueda de hiperparámetros; si no está instalado, se usa una búsqueda aleatoria |
 
-Todas se instalan con un solo comando de `pip` (paso 3 de la instalación); `imbalanced-learn` solo hace falta para el experimento con SMOTE: `pip install imbalanced-learn`.
+Las versiones mínimas están en `requirements.txt`.
 
 ### Instalación
 
@@ -211,7 +215,7 @@ python -m venv .venv
 # Linux/macOS:  source .venv/bin/activate
 
 # 3. Instalar las dependencias
-pip install pandas numpy matplotlib seaborn scikit-learn jupyter
+pip install -r requirements.txt
 
 # 4. Descomprimir los datos crudos
 #    Los .zip quedan en data/raw/ y contienen los CSV "1. HTA_FUAS.csv", etc.
