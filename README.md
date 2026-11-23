@@ -128,6 +128,7 @@ proyecto/
 ├── README.md                    ← este archivo
 ├── ENTREGABLE_PARCIAL.md        ← informe del avance parcial (cohorte, variables, baseline)
 ├── requirements.txt             ← dependencias de Python
+├── presentation.pdf             ← presentación del proyecto (15 diapositivas)
 ├── .gitattributes               ← reglas de Git LFS
 ├── data/
 │   ├── raw/                     ← datos originales del SIS (comprimidos, con Git LFS)
@@ -140,10 +141,18 @@ proyecto/
 │   └── processed/
 │       └── dataset_consolidado.csv  ← una fila por paciente (salida del preprocesamiento)
 ├── notebooks/
-│   ├── 01_eda.ipynb             ← Parte 1: análisis exploratorio de las 5 tablas
-│   └── 02_modelos.ipynb         ← Partes 3 y 4: modelos y comparación
+│   ├── 01_eda.ipynb             ← análisis exploratorio de las 5 tablas
+│   └── 02_modelos.ipynb         ← Partes 2 a 9: modelos, validación y comparación final
 ├── src/
-│   └── preprocessing.ipynb      ← Parte 2: limpieza, cohorte, objetivo y variables
+│   ├── preprocessing.ipynb      ← limpieza, cohorte, objetivo y variables (genera el dataset consolidado)
+│   ├── preprocessing.py         ← la misma lógica como módulo, con ventanas de tiempo y objetivos alternativos
+│   ├── models.py                ← todos los modelos con los hiperparámetros elegidos
+│   └── evaluation.py            ← métricas y generación de results/
+├── results/
+│   ├── metrics.csv              ← tabla comparativa de todos los modelos sobre el mismo test
+│   ├── model_comparison.txt     ← análisis redactado de la comparación de modelos
+│   └── plots/                   ← gráficos de resultados (00–18)
+│       └── README.md            ← qué muestra cada gráfico
 └── papers/
     ├── paper_integrante1.pdf    ← papers base revisados por el equipo
     ├── paper_integrante2.pdf
@@ -151,13 +160,16 @@ proyecto/
     └── resumen_papers.md        ← resumen y aporte de cada paper al proyecto
 ```
 
-### Qué hace cada cuaderno
+### Qué hace cada cuaderno y script
 
-| Orden | Cuaderno | Entrada | Salida | Contenido |
+| Orden | Archivo | Entrada | Salida | Contenido |
 |---|---|---|---|---|
 | 1 | `notebooks/01_eda.ipynb` | 5 CSV crudos | gráficos y tablas | Tamaño y calidad de cada tabla, valores faltantes e imposibles, duplicados, distribución de diagnósticos, presión arterial y gasto. Verifica la cohorte y los códigos del objetivo |
 | 2 | `src/preprocessing.ipynb` | 5 CSV crudos + `ubigeo_inei_2025.csv` | `dataset_consolidado.csv` | Lectura por bloques, limpieza con rangos fisiológicos, selección de la cohorte, construcción de `y` y agregación de variables por paciente (demografía, uso de servicios, presión arterial, antecedentes, consumos) |
-| 3 | `notebooks/02_modelos.ipynb` | `dataset_consolidado.csv` | métricas y gráficos | División train/test estratificada, imputación y escalado ajustados solo con train, KNN, árbol de decisión, regresión logística, validación cruzada y comparación final |
+| 3 | `notebooks/02_modelos.ipynb` | `dataset_consolidado.csv` (las Partes 4 y 6 también leen los CSV crudos) | predicciones e hiperparámetros en `data/processed/`, gráficos | Parte 2: KNN, árbol y regresión logística (baseline). Parte 3: Random Forest. Partes 4 y 5: secuencias mensuales y red recurrente (GRU). Parte 6: robustez, objetivos alternativos y validación temporal. Parte 7: gradient boosting y ensambles. Parte 8: perceptrón multicapa (MLP). Parte 9: comparación final |
+| 4 | `src/evaluation.py` | predicciones de test guardadas por `02_modelos.ipynb` | `results/metrics.csv`, `results/plots/` | Calcula las métricas de todos los modelos sobre los mismos pacientes de test. Se ejecuta con `python src/evaluation.py` |
+
+`src/preprocessing.py` y `src/models.py` son módulos que usa `02_modelos.ipynb`: el primero arma cohortes con otras ventanas de tiempo y el segundo reúne los modelos con sus hiperparámetros.
 
 ### Variables del dataset consolidado
 
