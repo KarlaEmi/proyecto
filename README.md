@@ -129,6 +129,7 @@ proyecto/
 ├── ENTREGABLE_PARCIAL.md        ← informe del avance parcial (cohorte, variables, baseline)
 ├── requirements.txt             ← dependencias de Python
 ├── presentation.pdf             ← presentación del proyecto (15 diapositivas)
+├── report.pdf                   ← informe final del proyecto (5 páginas)
 ├── .gitattributes               ← reglas de Git LFS
 ├── data/
 │   ├── raw/                     ← datos originales del SIS (comprimidos, con Git LFS)
