@@ -15,7 +15,7 @@ Equipo: Karla García Rojas, Erich León Flórez y Rasec Gonzales Leyva.
 4. [Estructura del repositorio](#4-estructura-del-repositorio)
 5. [Dependencias e instalación](#5-dependencias-e-instalación)
 6. [Cómo reproducir el flujo](#6-cómo-reproducir-el-flujo)
-7. [Resultados del baseline](#7-resultados-del-baseline)
+7. [Resultados](#7-resultados)
 8. [Limitaciones](#8-limitaciones)
 9. [Referencias](#9-referencias)
 
@@ -94,9 +94,9 @@ Este proyecto aplica la misma idea a los datos abiertos del SIS.
   - no fallecieron antes de 2024,
   - tienen al menos una atención en 2024.
 - **Objetivo `y`:** 1 si en 2024 aparece alguno de los eventos de la tabla 1.2. Solo se usan diagnósticos `DEFINITIVO` o `REPETIDO`.
-- **Desbalance:** alrededor del 5–6% de los pacientes tiene `y = 1`. Por eso:
-  - se usa `class_weight='balanced'`;
-  - se evalúa con ROC-AUC, PR-AUC, recall y precision, y no con accuracy;
+- **Desbalance:** el 5.6% de los pacientes tiene `y = 1`. Por eso:
+  - se evalúa con ROC-AUC, PR-AUC, Brier y la captura del 10% de mayor riesgo, y no con accuracy;
+  - el baseline usa `class_weight='balanced'`, pero los modelos finales van sin pesos o recalibrados, porque los pesos inflan las probabilidades (ver la sección 7);
   - no se usa SMOTE como estrategia principal, porque no mejora el AUC y descalibra las probabilidades [11].
 
 ---
@@ -173,17 +173,19 @@ proyecto/
 
 ### Variables del dataset consolidado
 
+`dataset_consolidado.csv` tiene **419,226 pacientes** y **36 variables** más el objetivo `y`. Todas se calculan con las atenciones de 2022–2023.
+
 | Grupo | Variables |
 |---|---|
 | Demográficas | `edad`, `masculino` |
 | Ubicación | `es_lima_frecuente`, `altitud_msnm` |
-| Uso de servicios | `n_atenciones`, `n_emergencias`, `n_hospitalizaciones`, `dias_hosp` |
-| Presión arterial | `n_mediciones_pa`, `pas_media`, `pas_max`, `pad_media`, `pad_max`, `presion_pulso`, `presion_pulso_max`, `prop_pa_alta`, `sin_medicion_pa` |
-| Antecedentes | `diabetes`, `dislipidemia`, `obesidad`, `fib_auricular`, `cardiopatia`, `n_diagnosticos` |
+| Uso de servicios | `n_atenciones`, `n_emergencias`, `n_hospitalizaciones`, `dias_hosp`, `dias_desde_ultima` (días entre la última atención y el 31/12/2023), `nivel_eess_max` (nivel más alto de establecimiento visitado), `prop_capita` (proporción de atenciones pagadas por cápita) |
+| Presión arterial | `n_mediciones_pa`, `pas_media`, `pas_max`, `pas_ultima`, `pad_media`, `pad_max`, `presion_pulso`, `presion_pulso_max`, `prop_pa_alta`, `sin_medicion_pa` |
+| Antecedentes | `diabetes`, `dislipidemia`, `obesidad`, `fib_auricular`, `cardiopatia`, `hta_cardiaca` (I11.9), `n_comorbilidades`, `n_diagnosticos` |
 | Consumos | `n_medicamentos`, `gasto_medicamentos`, `n_procedimientos`, `gasto_procedimientos`, `n_insumos`, `gasto_insumos`, `polifarmacia` |
 | Objetivo | `y` |
 
-La versión más reciente del preprocesamiento agrega variables, como los antecedentes de cardiopatía hipertensiva. El CSV subido corresponde al entregable parcial; si cambias el preprocesamiento, vuelve a generarlo.
+Los modelos usan 34 de las 36 variables: quitan `dias_hosp` y `pad_media` por estar muy correlacionadas con otras.
 
 ---
 
@@ -239,37 +241,54 @@ Además, descarga `ubigeo_inei_2025.csv` desde [ubigeos_peru](https://github.com
 
 ## 6. Cómo reproducir el flujo
 
-1. **EDA:** abre `notebooks/01_eda.ipynb`. En la variable `RUTA`, pon la carpeta de los CSV y ejecuta todas las celdas.
+Los cuadernos buscan solos las carpetas `data/raw/` y `data/processed/` desde la carpeta en que se abren. Si tus datos están en otro lugar, escribe la ruta en `RUTA_MANUAL` (o en las variables `RUTA_MANUAL_*` de cada parte de `02_modelos.ipynb`).
+
+1. **EDA:** abre `notebooks/01_eda.ipynb` y ejecuta todas las celdas.
 2. **Preprocesamiento:** abre `src/preprocessing.ipynb` y revisa los parámetros de la primera celda:
-   - `RUTA`: carpeta de los CSV (`""` = la misma carpeta del cuaderno).
-   - `FRAC`: fracción de pacientes. `None` = todos.
+   - `FRAC`: fracción de pacientes. `None` = todos; con una fracción, la salida se llama `dataset_consolidado_muestra.csv`.
    - `FIN_OBS = 20231231` y `INI_RES = 20240101`: separan el periodo de las variables del periodo del objetivo.
    - `CHUNK`: filas por bloque al leer.
 
-   El cuaderno genera `dataset_consolidado.csv`. Muévelo a `data/processed/`. Si se activa alguno de sus controles de calidad (por ejemplo, demasiadas presiones anuladas), la ejecución se detiene con un mensaje.
-3. **Modelos:** abre `notebooks/02_modelos.ipynb`. Revisa que la ruta de lectura apunte al CSV, por ejemplo `pd.read_csv('../data/processed/dataset_consolidado.csv', index_col='paciente')`. Ejecuta todas las celdas.
+   El cuaderno guarda `dataset_consolidado.csv` en `data/processed/`. Si se activa alguno de sus controles de calidad (por ejemplo, demasiadas presiones anuladas), la ejecución se detiene con un mensaje.
+3. **Modelos:** abre `notebooks/02_modelos.ipynb` y ejecuta las partes en orden. Cada parte guarda sus predicciones de test e hiperparámetros en `data/processed/`, que usan las partes siguientes.
+   - Las Partes 4 y 6 vuelven a leer los CSV crudos de `data/raw/`.
+   - La Parte 5 (GRU) entrena con el 30% de train (`FRAC_TRAIN = 0.3`); con `None` usa todo el train.
+   - La Parte 8 (MLP) es la más lenta (unos 100 minutos). `N_TRIALS` controla cuántas configuraciones prueba.
+4. **Resultados:** desde la raíz del repositorio, ejecuta:
+
+   ```bash
+   python src/evaluation.py
+   ```
+
+   Lee las predicciones guardadas y escribe `results/metrics.csv`, los gráficos de `results/plots/` y `results/resumen_generado.txt`. No sobrescribe `results/model_comparison.txt`, que es el análisis redactado.
 
 La semilla es `SEED = 42` en todos los cuadernos.
 
 ---
 
-## 7. Resultados del baseline
+## 7. Resultados
 
-Resultados del entregable parcial, sobre 84,663 pacientes de test:
+Todos los modelos se evaluaron sobre los **mismos 83,846 pacientes de test** (20% de la cohorte, partición estratificada), que se usaron una sola vez. Los hiperparámetros se eligieron solo con train. El azar da un PR-AUC de 0.056 y una captura del 10%.
 
-| Modelo | Recall | Precision | ROC-AUC test | ROC-AUC CV (5 folds) |
-|---|---|---|---|---|
-| KNN (k = 101) | 0.000 | 0.000 | 0.669 | 0.652 ± 0.011 |
-| Árbol de decisión (profundidad 7) | 0.634 | 0.087 | 0.683 | 0.650 ± 0.010 |
-| **Regresión logística** (`class_weight='balanced'`) | 0.628 | 0.092 | **0.695** | **0.693 ± 0.009** |
+| Modelo | Parte | ROC-AUC | PR-AUC | Brier | Captura del 10% de mayor riesgo |
+|---|---|---|---|---|---|
+| **Ensamble RF + boosting + GRU** (promedio) | 7 | **0.712** | 0.133 | 0.051 | 27.6% |
+| Gradient boosting | 7 | 0.709 | 0.133 | 0.051 | 27.1% |
+| MLP | 8 | 0.709 | 0.129 | 0.051 | 26.9% |
+| Random Forest | 3 | 0.705 | 0.124 | 0.051 | 26.3% |
+| GRU (secuencias mensuales) | 5 | 0.703 | 0.125 | 0.051 | 26.6% |
+| Regresión logística (baseline, `class_weight='balanced'`) | 2 | 0.693 | 0.116 | 0.221 | 24.6% |
+| KNN (k = 301) | 2 | 0.681 | 0.112 | 0.052 | 23.8% |
+| Árbol de decisión (profundidad 10) | 2 | 0.675 | 0.102 | 0.225 | 22.4% |
 
-La capacidad predictiva es moderada. Es lo esperable sin datos de laboratorio, como creatinina, colesterol o HbA1c. El detalle está en `ENTREGABLE_PARCIAL.md`.
+La tabla completa, con intervalos de confianza y los demás ensambles, está en `results/metrics.csv`. El análisis está en `results/model_comparison.txt`.
 
-**Siguientes pasos:**
-- Random Forest y HistGradientBoosting.
-- PR-AUC, ajuste del umbral y calibración.
-- `log1p` en conteos y gastos, y regularización L1/elastic-net.
-- Validación temporal.
+**Conclusiones principales:**
+- **Modelo recomendado: gradient boosting.** Rinde igual que el MLP, pero se entrena en segundos y da probabilidades calibradas.
+- El **ensamble con la GRU** es el mejor resultado (+0.007 de ROC-AUC sobre el Random Forest, diferencia significativa), porque la GRU aprovecha el orden temporal de las atenciones.
+- El 10% de pacientes de mayor riesgo concentra el **27% de las complicaciones**, 2.7 veces lo esperado al azar.
+- `class_weight='balanced'` no mejora el ROC-AUC y multiplica el Brier por cuatro: las probabilidades salen infladas. Los modelos finales van sin pesos o recalibrados.
+- Ocho algoritmos distintos quedan entre 0.675 y 0.709 por separado. El techo lo pone la información disponible (sin laboratorio, tabaquismo ni adherencia), no el algoritmo.
 
 ---
 
