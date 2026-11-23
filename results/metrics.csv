@@ -1,0 +1,16 @@
+﻿Modelo,Tipo,Parte,ROC-AUC,ROC-AUC IC 95% inf,ROC-AUC IC 95% sup,PR-AUC,Brier,Captura top 10% (%),Lift top 10%,Δ ROC-AUC vs baseline,Δ ROC-AUC vs RF,Δ vs RF IC 95% inf,Δ vs RF IC 95% sup,Significativa vs RF,Pesos de clase
+Ensamble RF + boosting + GRU + MLP (promedio),Ensamble,8,0.7124,,,0.1337,0.051,27.18,2.72,0.0199,,,,—,No
+Ensamble RF + boosting + GRU (promedio),Ensamble,7,0.7121,,,0.1334,0.051,27.56,2.76,0.0196,0.0071,0.0053,0.0089,Sí,No
+Stacking RF + boosting + GRU,Ensamble,7,0.7119,,,0.1342,0.051,28.07,2.81,0.0194,0.0069,0.0048,0.0091,Sí,No
+Ensamble boosting + GRU (promedio),Ensamble,7,0.7117,,,0.1343,0.051,27.96,2.8,0.0192,0.0067,0.004,0.0094,Sí,No
+Ensamble RF + GRU (promedio),Ensamble,7,0.7101,,,0.1298,0.0511,27.2,2.72,0.0176,0.0051,0.0033,0.0071,Sí,No
+Ensamble RF + boosting (promedio),Ensamble,7,0.7096,,,0.1312,0.0511,26.98,2.7,0.0171,0.0046,0.0034,0.0058,Sí,No
+Gradient boosting,Modelo,7,0.709,,,0.1328,0.051,27.07,2.71,0.0165,0.0041,0.0018,0.0063,Sí,No
+MLP,Modelo,8,0.7085,,,0.1292,0.0511,26.92,2.69,0.016,0.0035,0.0009,0.0059,Sí,Sí (alpha=0.44) + recalibración de Platt
+Random Forest,Modelo,3,0.705,0.6982,0.7117,0.1241,0.0512,26.32,2.63,0.0125,0.0,,,—,No
+GRU (secuencias mensuales),Modelo,5,0.7028,,,0.1252,0.0512,26.6,2.66,0.0103,-0.0022,-0.0061,0.0018,No,No
+MLP de control (secuencias sin orden),Modelo,5,0.693,,,0.1172,0.0515,24.69,2.47,0.0005,,,,—,No
+Regresión logística (baseline),Baseline,2,0.6925,0.6852,0.7001,0.1161,0.2212,24.6,2.46,0.0,,,,—,class_weight='balanced'
+Regresión logística sin pesos,Modelo,3,0.6918,,,0.1177,0.0515,24.77,2.48,-0.0007,-0.0132,-0.0171,-0.009,Sí,No
+KNN (k = 301),Modelo,2,0.6809,0.6739,0.6878,0.112,0.0516,23.83,2.38,-0.0116,,,,—,No (KNN no admite pesos)
+Árbol de decisión (profundidad 10),Modelo,2,0.6745,0.6679,0.682,0.1023,0.2249,22.43,2.24,-0.018,,,,—,class_weight='balanced'

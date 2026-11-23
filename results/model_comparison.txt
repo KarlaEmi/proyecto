@@ -1,0 +1,129 @@
+====================================================================================================
+COMPARACIÓN DE MODELOS
+Predicción de complicaciones graves en pacientes hipertensos asegurados en el SIS (Perú)
+Inteligencia Artificial Aplicada (1INF62) · PUCP · 2026-2
+Karla García Rojas · Erich León Flórez · Rasec Gonzales Leyva
+====================================================================================================
+
+1. PROBLEMA Y EVALUACIÓN
+----------------------------------------------------------------------------------------------------
+Objetivo: predecir, con la información administrativa de 2022-2023, si un paciente hipertenso tendrá
+en 2024 una complicación grave (ACV/AIT, infarto, insuficiencia cardíaca, enfermedad renal o
+fallecimiento).
+
+Cohorte: 419,226 pacientes, 34 variables, 5.60% con complicación (desbalance 16.8:1).
+Partición: 80/20 estratificada (SEED = 42). Todos los modelos se evalúan sobre los MISMOS 83,846
+pacientes de test, que se usaron una sola vez. Los hiperparámetros se eligieron solo con train
+(validación interna, error OOB o validación cruzada).
+
+Métricas:
+  - ROC-AUC (principal): capacidad de ordenar a los pacientes por riesgo.
+  - PR-AUC: precisión en la clase minoritaria (referencia del azar: 0.056).
+  - Brier: calibración de las probabilidades (menor es mejor).
+  - Captura del top 10%: % de las complicaciones que caen en el 10% de pacientes de mayor riesgo
+    (azar = 10%).
+  - Diferencias con IC 95% por bootstrap pareado (mismos pacientes remuestreados para ambos modelos).
+
+
+2. TABLA COMPARATIVA (test, 83,846 pacientes)
+----------------------------------------------------------------------------------------------------
+Modelo                                   Parte  ROC-AUC  PR-AUC  Brier   Top 10%  Δ vs RF [IC 95%]
+----------------------------------------------------------------------------------------------------
+Ensamble RF + boosting + GRU + MLP         8    0.7124   0.1337  0.0510  27.2%    —
+Ensamble RF + boosting + GRU               7    0.7121   0.1334  0.0510  27.6%    +0.0071 [+0.0053; +0.0089]
+Stacking RF + boosting + GRU               7    0.7119   0.1342  0.0510  28.1%    +0.0069 [+0.0048; +0.0091]
+Ensamble boosting + GRU                    7    0.7117   0.1343  0.0510  28.0%    +0.0067 [+0.0040; +0.0094]
+Ensamble RF + GRU                          7    0.7101   0.1298  0.0511  27.2%    +0.0051 [+0.0033; +0.0071]
+Ensamble RF + boosting                     7    0.7096   0.1312  0.0511  27.0%    +0.0046 [+0.0034; +0.0058]
+Gradient boosting                          7    0.7090   0.1328  0.0510  27.1%    +0.0041 [+0.0018; +0.0063]
+MLP                                        8    0.7085   0.1292  0.0511  26.9%    +0.0035 [+0.0009; +0.0059]
+Random Forest                              3    0.7050   0.1241  0.0512  26.3%    (referencia)
+GRU (secuencias mensuales)                 5    0.7028   0.1252  0.0512  26.6%    -0.0022 [-0.0061; +0.0018]
+MLP de control (secuencias sin orden)      5    0.6930   0.1172  0.0515  24.7%    —
+Regresión logística (BASELINE, balanced)   2    0.6925   0.1161  0.2212  24.6%    —
+Regresión logística sin pesos              3    0.6918   0.1177  0.0515  24.8%    -0.0132 [-0.0171; -0.0090]
+KNN (k = 301)                              2    0.6809   0.1120  0.0516  23.8%    —
+Árbol de decisión (profundidad 10)         2    0.6745   0.1023  0.2249  22.4%    —
+
+IC 95% del ROC-AUC (bootstrap): baseline 0.685-0.700 · Random Forest 0.698-0.712 · KNN 0.674-0.688 ·
+árbol 0.668-0.682. Validación cruzada (5 particiones, 50,000 pacientes): regresión logística
+0.690 ± 0.018, KNN 0.669 ± 0.017, árbol 0.657 ± 0.013, MLP 0.709 ± 0.014.
+
+Tabla completa (con lift, Δ frente al baseline y pesos de clase): results/metrics.csv
+Gráficos: results/plots/ (00_comparacion_roc_auc.png y 00_comparacion_metricas.png resumen todo).
+
+
+3. ¿QUÉ MODELO FUNCIONÓ MEJOR?
+----------------------------------------------------------------------------------------------------
+  - Mejor modelo individual: GRADIENT BOOSTING (ROC-AUC 0.709, PR-AUC 0.133), empatado con el MLP
+    (0.7085; diferencia -0.0006 [-0.0027; +0.0017], no significativa). Ambos superan de forma
+    significativa al Random Forest y al baseline (+0.016 a +0.017).
+  - Mejor resultado global: ENSAMBLE RF + BOOSTING + GRU (promedio simple de probabilidades):
+    ROC-AUC 0.712, +0.007 sobre el Random Forest (significativo), sin perder calibración.
+  - En la práctica: siguiendo al mismo 10% de pacientes de mayor riesgo, el ensamble encuentra un
+    4.7% más de complicaciones que el Random Forest (1,295 frente a 1,237 en test).
+
+Recomendación: gradient boosting como modelo final. Tiene el mismo desempeño que el MLP, pero se
+entrena en segundos (el MLP tardó 100 minutos), da probabilidades calibradas sin pasos extra y es
+fácil de recalibrar cada año. El ensamble con la GRU es la cota superior alcanzable combinando
+información tabular y temporal.
+
+
+4. ¿POR QUÉ?
+----------------------------------------------------------------------------------------------------
+  1. Relaciones no lineales, pero simples. Los ensambles de árboles y la red neuronal superan a la
+     regresión logística porque captan interacciones (edad × comorbilidades × uso del sistema) sin
+     especificarlas. Pero ganan las versiones simples: el boosting elige árboles de 15 hojas, y en el
+     MLP las 10 mejores configuraciones (de 1 a 4 capas) quedan dentro de 0.002. La señal está en
+     interacciones de pocas variables.
+  2. El ensamble mejora porque la GRU aprende algo distinto. La GRU ve la historia mes a mes: supera
+     a un control con la misma información pero sin orden temporal (+0.010, significativo), y el
+     último trimestre de 2023 concentra más de la mitad de su importancia. Es el modelo más distinto
+     de los tabulares (correlación de Spearman 0.88 con el RF), mientras que el MLP y el boosting
+     ordenan a los pacientes casi igual (0.963). Por eso agregar el MLP al ensamble no aporta
+     (+0.0003, no significativo) y agregar la GRU sí.
+  3. KNN y el árbol único rinden menos. KNN sufre con 34 variables de escalas y naturalezas mezcladas
+     (necesitó k = 301), y un solo árbol es inestable (necesitó hojas de 2,000 pacientes).
+  4. Los pesos de clase no ayudan. class_weight='balanced' no mejora el ROC-AUC (regresión logística
+     0.6925 con pesos frente a 0.6918 sin pesos) y multiplica el Brier por cuatro (0.221 frente a
+     0.052): las probabilidades salen infladas. Los modelos finales van sin pesos o recalibrados.
+
+
+5. ROBUSTEZ (Parte 6)
+----------------------------------------------------------------------------------------------------
+  - Aporta frente a lo obvio: solo edad y sexo 0.594; modelo clínico mínimo 0.649; Random Forest con
+    las 34 variables 0.704 (+0.055 [+0.048; +0.062]).
+  - Útil para decidir: entre umbrales de riesgo de 3% y 15% da más beneficio neto que seguir a todos
+    o a nadie. Con un umbral de 5% evita 25 seguimientos innecesarios por cada 100 pacientes.
+  - Predice complicaciones, no solo uso del sistema: con eventos graves (emergencia, hospitalización
+    o muerte) el ROC-AUC sube a 0.731, y con el fallecimiento a 0.762. La variable prop_capita pierde
+    dos tercios de su peso con el objetivo grave: hay sesgo de detección, pero la señal clínica
+    sobrevive.
+  - Estable en el tiempo: entrenado en 2022->2023 y evaluado en 2023->2024 pierde 0.011 de AUC
+    (nada con pacientes nuevos) y sobrestima el riesgo en ~10%, corregible recalibrando el intercepto.
+
+
+6. LIMITACIONES
+----------------------------------------------------------------------------------------------------
+  - Techo de ~0.71: ocho algoritmos muy distintos quedan entre 0.675 y 0.709. El límite lo pone la
+    información disponible (datos administrativos, sin laboratorio, tabaquismo ni adherencia real),
+    no el algoritmo.
+  - Sesgo de detección: los diagnósticos dependen de que el paciente acuda al SIS; parte de la señal
+    es uso del sistema (prop_capita, nivel_eess_max, n_atenciones).
+  - Los eventos cardiovasculares agudos son los menos predecibles (ACV 0.68, infarto 0.67).
+  - El fallecimiento solo se registra si ocurre durante una atención del SIS.
+  - Una sola validación temporal, dentro del mismo sistema de salud.
+  - La GRU se entrenó con el 30% de train, y el MLP con búsqueda aleatoria (sin Optuna).
+
+
+7. INSIGHTS
+----------------------------------------------------------------------------------------------------
+  - Las variables administrativas aportan tanto como las comorbilidades: el salto del modelo clínico
+    mínimo al Random Forest (+0.055) es igual al de edad y sexo al modelo clínico (+0.054).
+  - La continuidad del seguimiento aparece como protectora: más atenciones y menos días desde la
+    última se asocian con menos eventos graves.
+  - Útil para priorizar: el 10% de mayor riesgo concentra el 27% de las complicaciones (2.7 veces el
+    azar), suficiente para focalizar un programa de seguimiento.
+  - El siguiente avance debe venir de variables nuevas (recencia de los eventos, variabilidad de la
+    presión, síntomas previos como disnea o dolor torácico), no de algoritmos más complejos.
+====================================================================================================
